@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 import re
 from azure.storage.blob import BlobServiceClient
 from typing import List, Dict, Optional
+import hashlib
 
 app = func.FunctionApp()
 
@@ -461,8 +462,10 @@ class AppointmentMonitor:
                 return
             
             # Create a hash of current appointments to avoid duplicate notifications
-            appointment_summary = json.dumps(appointments, sort_keys=True)
-            current_hash = str(hash(appointment_summary))
+            # default=str ensures datetime/date objects (e.g., 'date_obj') serialize cleanly
+            appointment_summary = json.dumps(appointments, sort_keys=True, default=str)
+            # Use a stable hash across process restarts
+            current_hash = hashlib.sha256(appointment_summary.encode("utf-8")).hexdigest()
             last_hash = self.get_last_notification_hash()
             
             if current_hash == last_hash:
